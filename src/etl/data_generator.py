@@ -145,6 +145,10 @@ class EcommerceDataGenerator:
                 'subcategory': subcategory,
                 'price': price,
                 'cost': cost,
+                
+                # 🎯 السطر المطلوب لـ stock_quantity
+                'stock_quantity': random.randint(50, 500) if category == 'Electronics' else random.randint(100, 1000), 
+                
                 'created_at': datetime.now(),
                 'updated_at': datetime.now()
             }
@@ -254,7 +258,7 @@ class EcommerceDataGenerator:
         if users_df.empty:
             logger.warning("Users DataFrame is empty. Cannot generate events.")
             return pd.DataFrame()
-        
+            
         logger.info(f"Generating {n_events} events...")
         
         events = []
