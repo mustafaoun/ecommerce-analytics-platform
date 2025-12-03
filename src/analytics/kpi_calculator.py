@@ -124,17 +124,25 @@ class KPICalculator:
         return df
     
     def calculate_key_metrics(self):
-        """Calculate core KPIs"""
+        """
+        Calculate core KPIs.
+        FIXED: Robust error checking for None/NaN values.
+        """
+        
         # AOV from orders
         aov_query = "SELECT ROUND(AVG(total_amount), 2) as aov FROM orders;"
-        aov = pd.read_sql_query(aov_query, self.engine).iloc[0, 0]
+        aov_result = pd.read_sql_query(aov_query, self.engine)
+        # Check if the result is valid or default to 0.00
+        aov = aov_result.iloc[0, 0] if not aov_result.empty and aov_result.iloc[0, 0] is not None else 0.00
         
         # CAC (simple: marketing budget / new users – assume budget $10k/month)
         new_users_query = "SELECT COUNT(*) as new_users FROM users WHERE signup_date >= CURRENT_DATE - INTERVAL '30 days';"
         new_users = pd.read_sql_query(new_users_query, self.engine).iloc[0, 0]
-        cac = 10000 / new_users if new_users > 0 else 0
+        # CAC calculation already handles division by zero, but ensure the new_users count is valid.
+        new_users = new_users if new_users is not None else 0
+        cac = 10000 / new_users if new_users > 0 else 0.00
         
-        # Retention Rate (Cohort-Specific: Avg Month 1 Retention)
+        # Retention Rate (Avg Month 1 Retention)
         retention_query = """
         WITH cohort_periods AS (
             SELECT 
@@ -170,11 +178,14 @@ class KPICalculator:
         WHERE period = 1 AND initial_size > 0;
         """
         result = pd.read_sql_query(retention_query, self.engine)
-        retention = result.iloc[0, 0] if result.shape[0] > 0 and result.iloc[0, 0] is not None else 0
+        # Check if the result is valid or default to 0.00
+        retention = result.iloc[0, 0] if result.shape[0] > 0 and result.iloc[0, 0] is not None else 0.00
         
         # CLV (avg total_spent)
         clv_query = "SELECT ROUND(AVG(total_spent), 2) as clv FROM customer_lifetime_value WHERE total_spent > 0;"
-        clv = pd.read_sql_query(clv_query, self.engine).iloc[0, 0]
+        clv_result = pd.read_sql_query(clv_query, self.engine)
+        # Check if the result is valid or default to 0.00
+        clv = clv_result.iloc[0, 0] if not clv_result.empty and clv_result.iloc[0, 0] is not None else 0.00
         
         metrics = {
             'AOV': aov,
@@ -265,12 +276,12 @@ if __name__ == "__main__":
         print(f"  {k}: {v:,.2f}{'%' if '%' in k else ''}")
         
     roi_df = calculator.calculate_channel_roi()
-    turnover_df = calculator.calculate_inventory_turnover() # <-- UNCOMMENTED
+    turnover_df = calculator.calculate_inventory_turnover()
     
     print("\n📊 Channel ROI:")
     print(roi_df[['acquisition_channel', 'revenue_per_user', 'roi']].to_string(index=False))
     
-    print("\n📊 Inventory Turnover:") # <-- UNCOMMENTED
-    print(turnover_df[['category', 'units_sold', 'avg_inventory', 'turnover_rate']].to_string(index=False)) # <-- UNCOMMENTED
+    print("\n📊 Inventory Turnover:")
+    print(turnover_df[['category', 'units_sold', 'avg_inventory', 'turnover_rate']].to_string(index=False))
     
     calculator.create_kpi_dashboard()
