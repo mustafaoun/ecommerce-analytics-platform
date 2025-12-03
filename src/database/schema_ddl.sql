@@ -21,7 +21,8 @@ CREATE TABLE users (
     city VARCHAR(100),
     acquisition_channel VARCHAR(50),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    loaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Products table
@@ -34,7 +35,8 @@ CREATE TABLE products (
     cost DECIMAL(10,2),
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    loaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Orders table
@@ -47,7 +49,8 @@ CREATE TABLE orders (
     shipping_country VARCHAR(100),
     shipping_city VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    loaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Order items table
@@ -57,7 +60,8 @@ CREATE TABLE order_items (
     product_id UUID NOT NULL REFERENCES products(product_id) ON DELETE CASCADE,
     quantity INTEGER NOT NULL DEFAULT 1,
     price_at_time DECIMAL(10,2) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    loaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Events table (for user interactions)
@@ -68,7 +72,8 @@ CREATE TABLE events (
     product_id UUID REFERENCES products(product_id) ON DELETE SET NULL,
     timestamp TIMESTAMP NOT NULL,
     session_id VARCHAR(100),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    loaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Marketing campaigns table
@@ -80,7 +85,8 @@ CREATE TABLE marketing_campaigns (
     end_date DATE NOT NULL,
     budget DECIMAL(10,2),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    loaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create indexes for performance
