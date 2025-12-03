@@ -21,18 +21,9 @@ class DataLoader:
                        if_exists: str = 'append', chunk_size: int = 1000) -> bool:
         """
         Load a DataFrame to PostgreSQL table
-        
-        Args:
-            df: DataFrame to load
-            table_name: Target table name
-            if_exists: 'fail', 'replace', or 'append'
-            chunk_size: Number of rows to insert at once
-        
-        Returns:
-            bool: Success status
         """
         try:
-            # FIX: Added loaded_at for all tables (as per schema)
+            # FIX: Add loaded_at for all tables (as per schema)
             if 'loaded_at' not in df.columns:
                 df['loaded_at'] = datetime.now()
             
@@ -63,12 +54,10 @@ class DataLoader:
         try:
             logger.info(f"Loading CSV from {csv_path} to {table_name}...")
             
-            # Read CSV in chunks for memory efficiency
             chunk_size = 10000
             total_rows = 0
             
             for chunk in pd.read_csv(csv_path, chunksize=chunk_size):
-                # We need to set if_exists for the first chunk to the requested value
                 current_if_exists = if_exists if total_rows == 0 else 'append'
 
                 success = self.load_dataframe(chunk, table_name, if_exists=current_if_exists)
@@ -131,13 +120,6 @@ class DataLoader:
     def run_etl_pipeline(self, data_dict: dict, truncate_first: bool = True) -> bool:
         """
         Run complete ETL pipeline
-        
-        Args:
-            data_dict: Dictionary of table_name: DataFrame pairs
-            truncate_first: Whether to truncate tables before loading
-        
-        Returns:
-            bool: Overall success status
         """
         logger.info("🚀 Starting ETL pipeline...")
         
