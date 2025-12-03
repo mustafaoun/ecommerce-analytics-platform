@@ -37,7 +37,6 @@ class KPICalculator:
     
     def calculate_retention_cohort(self, periods=12):
         """Calculate monthly retention cohort analysis"""
-        # --- UPDATED COHORT QUERY ---
         cohort_query = """
         WITH user_cohorts AS (
             SELECT 
@@ -81,6 +80,48 @@ class KPICalculator:
         df['retention_rate'] = df['retained_users'] / df['initial_size']
         logger.info(f"Calculated retention for {len(df)} cohort periods")
         return df
+
+    def calculate_channel_roi(self):
+        """Calculate ROI per acquisition channel"""
+        query = """
+        SELECT 
+            u.acquisition_channel,
+            COUNT(DISTINCT u.user_id) as users,
+            COUNT(DISTINCT o.order_id) as orders,
+            ROUND(SUM(o.total_amount), 2) as revenue,
+            ROUND(SUM(o.total_amount) / NULLIF(COUNT(DISTINCT u.user_id), 0), 2) as revenue_per_user,
+            ROUND((SUM(o.total_amount) / NULLIF(COUNT(DISTINCT u.user_id), 0)) / 10, 2) as roi
+        FROM users u
+        LEFT JOIN orders o ON u.user_id = o.user_id
+        GROUP BY u.acquisition_channel
+        ORDER BY revenue DESC;
+        """
+        df = pd.read_sql_query(query, self.engine)
+        logger.info(f"Channel ROI: {len(df)} channels")
+        return df
+
+    def calculate_inventory_turnover(self):
+        """
+        Calculate inventory turnover rate.
+        FIXED: Uses the new 'stock_quantity' column.
+        """
+        query = """
+        SELECT 
+            p.category,
+            -- Calculate Average Inventory based on the current stock quantity
+            AVG(p.stock_quantity) as avg_inventory, 
+            -- Calculate Units Sold from order_items
+            SUM(oi.quantity) as units_sold,
+            -- Calculate Turnover Rate: Units Sold / Average Inventory
+            ROUND(SUM(oi.quantity) / NULLIF(AVG(p.stock_quantity), 0), 2) as turnover_rate
+        FROM products p
+        LEFT JOIN order_items oi ON p.product_id = oi.product_id
+        GROUP BY p.category
+        ORDER BY turnover_rate DESC;
+        """
+        df = pd.read_sql_query(query, self.engine)
+        logger.info(f"Inventory turnover: {len(df)} categories")
+        return df
     
     def calculate_key_metrics(self):
         """Calculate core KPIs"""
@@ -93,7 +134,7 @@ class KPICalculator:
         new_users = pd.read_sql_query(new_users_query, self.engine).iloc[0, 0]
         cac = 10000 / new_users if new_users > 0 else 0
         
-        # --- UPDATED RETENTION QUERY (Cohort-Specific: Avg Month 1 Retention) ---
+        # Retention Rate (Cohort-Specific: Avg Month 1 Retention)
         retention_query = """
         WITH cohort_periods AS (
             SELECT 
@@ -123,7 +164,6 @@ class KPICalculator:
             JOIN cohort_periods cp ON ca.cohort_month = cp.cohort_month AND ca.activity_month = cp.activity_month
             GROUP BY 1, 2
         )
-        -- Calculate the average retention rate for Period 1 (Month 1 activity)
         SELECT
             AVG(CAST(retained_users AS NUMERIC) / initial_size * 100) as retention_rate_pct
         FROM cohort_metrics
@@ -139,7 +179,7 @@ class KPICalculator:
         metrics = {
             'AOV': aov,
             'CAC': cac,
-            'Retention Rate (%)': retention,
+            'Retention Rate (%)': retention, 
             'CLV': clv
         }
         logger.info("Calculated key metrics")
@@ -152,6 +192,9 @@ class KPICalculator:
         ltv_df = self.get_customer_ltv()
         cohort_df = self.calculate_retention_cohort()
         metrics = self.calculate_key_metrics()
+        
+        # Run turnover calculation here, it should work after schema update
+        turnover_df = self.calculate_inventory_turnover()
         
         # Subplots dashboard layout
         fig = make_subplots(
@@ -170,10 +213,7 @@ class KPICalculator:
         fig.update_yaxes(title_text="Revenue ($)", row=1, col=1)
         
         # 2. Retention Heatmap (pivot for cohort)
-        # We pivot the data to create the matrix for the heatmap
         cohort_pivot = cohort_df.pivot_table(index='cohort_month', columns='period', values='retention_rate', aggfunc='mean').fillna(0) * 100
-        
-        # Format the index for better labels
         cohort_labels = [dt.strftime('%Y-%m') for dt in cohort_pivot.index]
         
         fig.add_trace(
@@ -223,4 +263,14 @@ if __name__ == "__main__":
     print("=" * 25)
     for k, v in metrics.items():
         print(f"  {k}: {v:,.2f}{'%' if '%' in k else ''}")
+        
+    roi_df = calculator.calculate_channel_roi()
+    turnover_df = calculator.calculate_inventory_turnover() # <-- UNCOMMENTED
+    
+    print("\n📊 Channel ROI:")
+    print(roi_df[['acquisition_channel', 'revenue_per_user', 'roi']].to_string(index=False))
+    
+    print("\n📊 Inventory Turnover:") # <-- UNCOMMENTED
+    print(turnover_df[['category', 'units_sold', 'avg_inventory', 'turnover_rate']].to_string(index=False)) # <-- UNCOMMENTED
+    
     calculator.create_kpi_dashboard()

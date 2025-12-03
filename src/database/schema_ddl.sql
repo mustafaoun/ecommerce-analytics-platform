@@ -33,6 +33,7 @@ CREATE TABLE products (
     subcategory VARCHAR(100),
     price DECIMAL(10,2) NOT NULL,
     cost DECIMAL(10,2),
+    stock_quantity INTEGER DEFAULT 0,  -- <--- ADDED STOCK COLUMN HERE
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
