@@ -1,4 +1,3 @@
-# src/etl/data_loader.py
 import pandas as pd
 from sqlalchemy import create_engine, text
 import os
@@ -15,11 +14,11 @@ class DataLoader:
     def __init__(self):
         # Create SQLAlchemy engine
         self.db_url = f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@" \
-                     f"{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}?sslmode=require"
+                      f"{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}?sslmode=require"
         self.engine = create_engine(self.db_url, pool_size=10, max_overflow=20)
     
     def load_dataframe(self, df: pd.DataFrame, table_name: str, 
-                      if_exists: str = 'append', chunk_size: int = 1000) -> bool:
+                       if_exists: str = 'append', chunk_size: int = 1000) -> bool:
         """
         Load a DataFrame to PostgreSQL table
         
@@ -33,7 +32,7 @@ class DataLoader:
             bool: Success status
         """
         try:
-            # Add load timestamp
+            # FIX: Added loaded_at for all tables (as per schema)
             if 'loaded_at' not in df.columns:
                 df['loaded_at'] = datetime.now()
             
@@ -57,7 +56,7 @@ class DataLoader:
             return False
     
     def load_from_csv(self, csv_path: str, table_name: str, 
-                     if_exists: str = 'append') -> bool:
+                      if_exists: str = 'append') -> bool:
         """
         Load data from CSV file to database
         """
@@ -69,16 +68,16 @@ class DataLoader:
             total_rows = 0
             
             for chunk in pd.read_csv(csv_path, chunksize=chunk_size):
-                success = self.load_dataframe(chunk, table_name, if_exists='append')
+                # We need to set if_exists for the first chunk to the requested value
+                current_if_exists = if_exists if total_rows == 0 else 'append'
+
+                success = self.load_dataframe(chunk, table_name, if_exists=current_if_exists)
                 if success:
                     total_rows += len(chunk)
                     logger.info(f"  Processed {total_rows} rows...")
                 else:
                     return False
                 
-                # After first chunk, use append for subsequent chunks
-                if_exists = 'append'
-            
             logger.info(f"✅ Loaded {total_rows} rows from {csv_path} to {table_name}")
             return True
             
@@ -143,7 +142,7 @@ class DataLoader:
         logger.info("🚀 Starting ETL pipeline...")
         
         # Define load order (respect foreign key constraints)
-        load_order = ['users', 'products', 'orders', 'order_items', 'events']
+        load_order = ['users', 'products', 'orders', 'order_items', 'events', 'marketing_campaigns']
         
         all_success = True
         
