@@ -14,12 +14,11 @@ load_dotenv()
 
 class KPICalculator:
     def __init__(self):
-        # Database connection setup
         self.db_url = f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}?sslmode=require"
         self.engine = create_engine(self.db_url)
     
     def get_daily_kpis(self):
-        """Fetch daily KPIs from view (last 90 days)"""
+        """Fetch daily KPIs from view"""
         query = "SELECT * FROM daily_kpis ORDER BY date DESC LIMIT 90;"
         df = pd.read_sql_query(query, self.engine)
         df['date'] = pd.to_datetime(df['date'])
@@ -27,7 +26,7 @@ class KPICalculator:
         return df
     
     def get_customer_ltv(self):
-        """Fetch customer lifetime value from view (top spenders)"""
+        """Fetch customer lifetime value from view"""
         query = "SELECT * FROM customer_lifetime_value WHERE total_spent > 0 ORDER BY total_spent DESC LIMIT 500;"
         df = pd.read_sql_query(query, self.engine)
         df['signup_date'] = pd.to_datetime(df['signup_date'])
@@ -38,90 +37,102 @@ class KPICalculator:
     
     def calculate_retention_cohort(self, periods=12):
         """Calculate monthly retention cohort analysis"""
-        # SQL query to get cohort and activity months for all users
+        # --- UPDATED COHORT QUERY ---
         cohort_query = """
         WITH user_cohorts AS (
             SELECT 
                 user_id,
-                DATE_TRUNC('month', signup_date) as cohort_month,
-                acquisition_channel
+                DATE_TRUNC('month', signup_date) as cohort_month
             FROM users
         ),
         monthly_activity AS (
             SELECT 
-                uc.user_id,
+                o.user_id,
                 uc.cohort_month,
-                uc.acquisition_channel,
-                DATE_TRUNC('month', o.order_date) as activity_month,
-                COUNT(DISTINCT o.order_id) as orders
-            FROM user_cohorts uc
-            LEFT JOIN orders o ON uc.user_id = o.user_id
-            GROUP BY 1, 2, 3, 4
+                DATE_TRUNC('month', o.order_date) as activity_month
+            FROM orders o
+            JOIN user_cohorts uc ON o.user_id = uc.user_id
+            GROUP BY 1, 2, 3
         )
         SELECT 
             cohort_month,
             activity_month,
-            acquisition_channel,
-            COUNT(DISTINCT user_id) as active_users,
-            COUNT(DISTINCT CASE WHEN orders > 0 THEN user_id END) as retained_users
+            COUNT(DISTINCT user_id) as retained_users
         FROM monthly_activity
-        GROUP BY cohort_month, activity_month, acquisition_channel
+        GROUP BY cohort_month, activity_month
         ORDER BY cohort_month, activity_month;
         """
         df = pd.read_sql_query(cohort_query, self.engine)
-        
         df['cohort_month'] = pd.to_datetime(df['cohort_month'])
         df['activity_month'] = pd.to_datetime(df['activity_month'])
         
-        # FIX: Remove timezone localization (tz_localize(None)) to ensure both datetime 
-        # columns are timezone-naive before subtraction, resolving the TypeError.
+        # Remove timezone localization to ensure compatibility for subtraction
         df['cohort_month'] = df['cohort_month'].dt.tz_localize(None)
         df['activity_month'] = df['activity_month'].dt.tz_localize(None)
         
         # Calculate the month index (period) since signup
-        df['period'] = (df['activity_month'] - df['cohort_month']).dt.days // 30  # Approximate months
+        df['period'] = (df['activity_month'] - df['cohort_month']).dt.days // 30 
+        
+        # Calculate initial cohort size for each month
+        cohort_sizes = df[df['period'] == 0].groupby('cohort_month')['retained_users'].sum().rename('initial_size')
+        df = df.merge(cohort_sizes, on='cohort_month')
         
         # Calculate retention rate
-        df['retention_rate'] = df['retained_users'] / df['active_users']
+        df['retention_rate'] = df['retained_users'] / df['initial_size']
         logger.info(f"Calculated retention for {len(df)} cohort periods")
         return df
     
     def calculate_key_metrics(self):
-        """Calculate core KPIs: AOV, CAC, Retention Rate, CLV"""
-        # 1. AOV (Average Order Value)
+        """Calculate core KPIs"""
+        # AOV from orders
         aov_query = "SELECT ROUND(AVG(total_amount), 2) as aov FROM orders;"
         aov = pd.read_sql_query(aov_query, self.engine).iloc[0, 0]
         
-        # 2. CAC (Cost to Acquire Customer) - Assumed marketing budget $10k/month
+        # CAC (simple: marketing budget / new users – assume budget $10k/month)
         new_users_query = "SELECT COUNT(*) as new_users FROM users WHERE signup_date >= CURRENT_DATE - INTERVAL '30 days';"
         new_users = pd.read_sql_query(new_users_query, self.engine).iloc[0, 0]
         cac = 10000 / new_users if new_users > 0 else 0
         
-        # 3. Retention Rate (monthly) - Simplified calculation
+        # --- UPDATED RETENTION QUERY (Cohort-Specific: Avg Month 1 Retention) ---
         retention_query = """
-        WITH monthly_cohorts AS (
+        WITH cohort_periods AS (
             SELECT 
-                DATE_TRUNC('month', signup_date) as cohort,
-                COUNT(*) as cohort_size
-            FROM users
-            GROUP BY cohort
+                u.user_id,
+                DATE_TRUNC('month', u.signup_date) as cohort_month,
+                DATE_TRUNC('month', o.order_date) as activity_month
+            FROM users u
+            JOIN orders o ON u.user_id = o.user_id
+            GROUP BY 1, 2, 3
         ),
-        monthly_active AS (
-            SELECT 
-                DATE_TRUNC('month', o.order_date) as month,
-                COUNT(DISTINCT o.user_id) as active
-            FROM orders o
-            GROUP BY month
+        cohort_analysis AS (
+            SELECT
+                cohort_month,
+                activity_month,
+                (EXTRACT(YEAR FROM activity_month) - EXTRACT(YEAR FROM cohort_month)) * 12 +
+                (EXTRACT(MONTH FROM activity_month) - EXTRACT(MONTH FROM cohort_month)) AS period
+            FROM cohort_periods
+            GROUP BY 1, 2
+        ),
+        cohort_metrics AS (
+            SELECT
+                ca.cohort_month,
+                ca.period,
+                COUNT(DISTINCT cp.user_id) AS retained_users,
+                (SELECT COUNT(user_id) FROM users WHERE DATE_TRUNC('month', signup_date) = ca.cohort_month) AS initial_size
+            FROM cohort_analysis ca
+            JOIN cohort_periods cp ON ca.cohort_month = cp.cohort_month AND ca.activity_month = cp.activity_month
+            GROUP BY 1, 2
         )
-        SELECT 
-            AVG(CAST(ma.active AS NUMERIC) / mc.cohort_size * 100) as retention_rate_pct
-        FROM monthly_cohorts mc
-        JOIN monthly_active ma ON ma.month = mc.cohort;
+        -- Calculate the average retention rate for Period 1 (Month 1 activity)
+        SELECT
+            AVG(CAST(retained_users AS NUMERIC) / initial_size * 100) as retention_rate_pct
+        FROM cohort_metrics
+        WHERE period = 1 AND initial_size > 0;
         """
         result = pd.read_sql_query(retention_query, self.engine)
         retention = result.iloc[0, 0] if result.shape[0] > 0 and result.iloc[0, 0] is not None else 0
         
-        # 4. CLV (Customer Lifetime Value) - Average total spend
+        # CLV (avg total_spent)
         clv_query = "SELECT ROUND(AVG(total_spent), 2) as clv FROM customer_lifetime_value WHERE total_spent > 0;"
         clv = pd.read_sql_query(clv_query, self.engine).iloc[0, 0]
         
