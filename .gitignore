@@ -81,6 +81,23 @@ target/
 # IPython
 profile_default/
 ipython_config.py
+# Sensitive files
+.env
+.env.airflow
+.env.example  # If you don't want to commit examples either
+
+# Airflow
+logs/
+airflow.cfg
+airflow.db
+
+# Data and backups
+data/generated/*.csv
+data/test/*.csv
+data/backups/
+
+# Docker
+*.log
 
 # pyenv
 #   For a library or package, you might want to ignore these files since the code is
