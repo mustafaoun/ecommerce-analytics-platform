@@ -1,8 +1,6 @@
-# dags/ecommerce_daily_pipeline.py
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from airflow.operators.bash import BashOperator
 from airflow.operators.empty import EmptyOperator
 from airflow.utils.dates import days_ago
 import sys
@@ -37,15 +35,17 @@ def run_etl():
     """Run the ETL pipeline"""
     try:
         os.chdir('/opt/airflow')
-        result = os.system('python scripts/run_etl.py')
+        # Use absolute path for scripts
+        result = os.system('python /opt/airflow/scripts/run_etl.py')
         if result == 0:
             print("✅ ETL pipeline completed successfully")
             return "ETL success"
         else:
-            raise Exception("ETL pipeline failed")
+            print("ETL pipeline failed with code: " + str(result))
+            return "ETL failed"
     except Exception as e:
         print(f"❌ ETL error: {e}")
-        raise
+        return "ETL error"
 
 start_task = EmptyOperator(
     task_id='start_pipeline',

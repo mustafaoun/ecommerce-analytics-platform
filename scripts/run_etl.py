@@ -20,12 +20,12 @@ def main():
     
     try:
         # Step 1: Generate data
-        print("\n1️⃣  Generating synthetic data...")
+        print("\n1️⃣ Generating synthetic data...")
         generator = EcommerceDataGenerator(seed=42)
         data = generator.generate_all_data()
         
         # Step 2: Load to database
-        print("\n2️⃣  Loading data to PostgreSQL...")
+        print("\n2️⃣ Loading data to PostgreSQL...")
         loader = DataLoader()
         
         # Test connection first

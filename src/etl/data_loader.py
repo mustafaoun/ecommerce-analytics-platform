@@ -1,3 +1,4 @@
+# src/etl/data_loader.py
 import pandas as pd
 from sqlalchemy import create_engine, text
 import os
@@ -14,16 +15,25 @@ class DataLoader:
     def __init__(self):
         # Create SQLAlchemy engine
         self.db_url = f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@" \
-                      f"{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}?sslmode=require"
+                     f"{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}?sslmode=require"
         self.engine = create_engine(self.db_url, pool_size=10, max_overflow=20)
     
     def load_dataframe(self, df: pd.DataFrame, table_name: str, 
-                       if_exists: str = 'append', chunk_size: int = 1000) -> bool:
+                      if_exists: str = 'append', chunk_size: int = 500) -> bool:
         """
         Load a DataFrame to PostgreSQL table
+        
+        Args:
+            df: DataFrame to load
+            table_name: Target table name
+            if_exists: 'fail', 'replace', or 'append'
+            chunk_size: Number of rows to insert at once
+        
+        Returns:
+            bool: Success status
         """
         try:
-            # FIX: Add loaded_at for all tables (as per schema)
+            # Add load timestamp
             if 'loaded_at' not in df.columns:
                 df['loaded_at'] = datetime.now()
             
@@ -47,26 +57,28 @@ class DataLoader:
             return False
     
     def load_from_csv(self, csv_path: str, table_name: str, 
-                      if_exists: str = 'append') -> bool:
+                     if_exists: str = 'append') -> bool:
         """
         Load data from CSV file to database
         """
         try:
             logger.info(f"Loading CSV from {csv_path} to {table_name}...")
             
+            # Read CSV in chunks for memory efficiency
             chunk_size = 10000
             total_rows = 0
             
             for chunk in pd.read_csv(csv_path, chunksize=chunk_size):
-                current_if_exists = if_exists if total_rows == 0 else 'append'
-
-                success = self.load_dataframe(chunk, table_name, if_exists=current_if_exists)
+                success = self.load_dataframe(chunk, table_name, if_exists='append')
                 if success:
                     total_rows += len(chunk)
                     logger.info(f"  Processed {total_rows} rows...")
                 else:
                     return False
                 
+                # After first chunk, use append for subsequent chunks
+                if_exists = 'append'
+            
             logger.info(f"✅ Loaded {total_rows} rows from {csv_path} to {table_name}")
             return True
             
@@ -78,15 +90,16 @@ class DataLoader:
             return False
     
     def truncate_table(self, table_name: str) -> bool:
-        """Truncate a table (delete all rows)"""
+        """Truncate a table (delete all rows) – use DELETE for PostgreSQL compatibility"""
         try:
             with self.engine.connect() as conn:
-                conn.execute(text(f"TRUNCATE TABLE {table_name} CASCADE"))
+                # Use DELETE FROM for PostgreSQL (TRUNCATE IF EXISTS not supported)
+                conn.execute(text(f"DELETE FROM {table_name}"))
                 conn.commit()
-                logger.info(f"✅ Truncated table: {table_name}")
+                logger.info(f"✅ Cleared table: {table_name}")
                 return True
         except Exception as e:
-            logger.error(f"❌ Failed to truncate {table_name}: {e}")
+            logger.error(f"❌ Failed to clear {table_name}: {e}")
             return False
     
     def get_table_info(self, table_name: str) -> dict:
@@ -120,11 +133,18 @@ class DataLoader:
     def run_etl_pipeline(self, data_dict: dict, truncate_first: bool = True) -> bool:
         """
         Run complete ETL pipeline
+        
+        Args:
+            data_dict: Dictionary of table_name: DataFrame pairs
+            truncate_first: Whether to truncate tables before loading
+        
+        Returns:
+            bool: Overall success status
         """
         logger.info("🚀 Starting ETL pipeline...")
         
         # Define load order (respect foreign key constraints)
-        load_order = ['users', 'products', 'orders', 'order_items', 'events', 'marketing_campaigns']
+        load_order = ['users', 'products', 'orders', 'order_items', 'events']
         
         all_success = True
         
