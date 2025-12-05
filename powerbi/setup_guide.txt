@@ -1,0 +1,76 @@
+
+    🚀 POWER BI SETUP GUIDE
+    ======================
+    
+    STEP 1: CONNECT TO DATABASE
+    ----------------------------
+    1. Open Power BI Desktop
+    2. Click "Get Data" -> "More..." -> "Database" -> "PostgreSQL database"
+    3. Enter connection details:
+        Server: aws-1-eu-west-1.pooler.supabase.com
+        Database: postgres
+        Username: postgres.uquruuixtmkpgivbtcjx
+        Password: 5tF?36UXz$gFzb6
+    4. Click "Connect"
+    
+    STEP 2: LOAD DATA TABLES
+    ------------------------
+    1. Select these tables:
+        - sales_summary (VIEW)
+        - customer_lifetime_value_view (VIEW)
+        - product_performance_view (VIEW)
+        - daily_kpi_view (VIEW)
+        - geographic_performance_view (VIEW)
+    2. Click "Load"
+    
+    STEP 3: CREATE DATA MODEL
+    -------------------------
+    1. Go to "Model" view
+    2. Create relationships:
+        - sales_summary[product_id] -> product_performance_view[product_id]
+        - sales_summary[user_id] -> customer_lifetime_value_view[user_id]
+    3. Mark 'Date' table:
+        - Create Date table using:
+          Date = CALENDAR(MIN(sales_summary[order_date]), MAX(sales_summary[order_date]))
+        - Mark as Date table: Right-click -> Mark as date table
+    
+    STEP 4: CREATE DAX MEASURES
+    ---------------------------
+    1. Copy DAX measures from dax_measures.txt
+    2. Paste into Power BI measures pane
+    
+    STEP 5: BUILD DASHBOARD PAGES
+    -----------------------------
+    1. Follow wireframe in dashboard_wireframe.txt
+    2. Use visualizations from "Visualizations" pane
+    3. Apply theme: View -> Themes -> Import theme -> Use included theme.json
+    
+    STEP 6: PUBLISH TO POWER BI SERVICE
+    -----------------------------------
+    1. File -> Publish -> Select workspace
+    2. Set up scheduled refresh:
+        - Power BI Service -> Dataset -> Settings
+        - Configure data source credentials
+        - Set refresh schedule (Daily at 6 AM)
+    
+    TIPS FOR PERFORMANCE:
+    --------------------
+    1. Use import mode (not DirectQuery) for better performance
+    2. Aggregate data at database level before loading
+    3. Use calculated columns sparingly
+    4. Use DAX measures for calculations
+    5. Hide unused columns from report view
+    
+    TROUBLESHOOTING:
+    ----------------
+    1. Connection failed: Check firewall settings, allow your IP in AWS RDS security group
+    2. Slow performance: Create indexes, use materialized views
+    3. Memory issues: Reduce data volume, use aggregation tables
+    
+    NEXT STEPS:
+    -----------
+    1. Add bookmarks for different views
+    2. Create mobile-optimized layout
+    3. Set up data alerts for KPIs
+    4. Share with stakeholders
+    

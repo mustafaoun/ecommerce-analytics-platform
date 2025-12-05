@@ -1,0 +1,57 @@
+
+    -- 📊 KEY DAX MEASURES FOR E-COMMERCE DASHBOARD
+    -- =============================================
+
+    -- 1. REVENUE METRICS
+    Total Revenue = SUM(sales_summary[total_revenue])
+    YTD Revenue = TOTALYTD([Total Revenue], 'Date'[Date])
+    MTD Revenue = TOTALMTD([Total Revenue], 'Date'[Date])
+    QTD Revenue = TOTALQTD([Total Revenue], 'Date'[Date])
+    
+    Avg Order Value = AVERAGE(sales_summary[avg_order_value])
+    Revenue Growth % = 
+        VAR PreviousRevenue = CALCULATE([Total Revenue], PREVIOUSMONTH('Date'[Date]))
+        RETURN DIVIDE([Total Revenue] - PreviousRevenue, PreviousRevenue)
+    
+    -- 2. ORDER METRICS
+    Total Orders = COUNTROWS(sales_summary)
+    Order Growth % = 
+        VAR PreviousOrders = CALCULATE([Total Orders], PREVIOUSMONTH('Date'[Date]))
+        RETURN DIVIDE([Total Orders] - PreviousOrders, PreviousOrders)
+    
+    -- 3. CUSTOMER METRICS
+    Total Customers = DISTINCTCOUNT(sales_summary[user_id])
+    New Customers = SUM(sales_summary[new_customers])
+    Active Customers = DISTINCTCOUNT(sales_summary[user_id])
+    
+    Customer Retention Rate = 
+        VAR CurrentMonthCustomers = CALCULATE([Active Customers], DATEADD('Date'[Date], -1, MONTH))
+        VAR PreviousMonthCustomers = CALCULATE([Active Customers], DATEADD('Date'[Date], -2, MONTH))
+        RETURN DIVIDE(CurrentMonthCustomers, PreviousMonthCustomers)
+    
+    Customer Lifetime Value = AVERAGE(customer_lifetime_value_view[customer_lifetime_value])
+    
+    -- 4. PRODUCT METRICS
+    Top Product Revenue = MAXX(ALL(product_performance_view), [total_revenue])
+    Avg Profit Margin = AVERAGE(product_performance_view[profit_margin_percent])
+    
+    -- 5. GEOGRAPHIC METRICS
+    Revenue per Country = SUM(geographic_performance_view[total_revenue])
+    Customers per Country = DISTINCTCOUNT(geographic_performance_view[country])
+    
+    -- 6. TIME INTELLIGENCE
+    Revenue Last Month = CALCULATE([Total Revenue], DATEADD('Date'[Date], -1, MONTH))
+    Revenue Same Month Last Year = CALCULATE([Total Revenue], SAMEPERIODLASTYEAR('Date'[Date]))
+    
+    -- 7. KPI STATUS INDICATORS
+    Revenue Target = 100000  -- Example target
+    Revenue vs Target % = DIVIDE([Total Revenue], [Revenue Target])
+    
+    KPI Status = 
+        SWITCH(TRUE(),
+            [Revenue vs Target %] >= 1.1, "✅ Exceeding Target",
+            [Revenue vs Target %] >= 1.0, "✅ Meeting Target",
+            [Revenue vs Target %] >= 0.9, "⚠️ Slightly Below",
+            "❌ Below Target"
+        )
+    

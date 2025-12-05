@@ -1,0 +1,29 @@
+
+    let
+        Source = PostgreSQL.Database("aws-1-eu-west-1.pooler.supabase.com", "postgres", [CreateNavigationProperties=false]),
+        
+        // Get sales summary
+        sales_summary = Source{[Schema="public", Item="sales_summary"]}[Data],
+        
+        // Get customer lifetime value
+        customer_lifetime = Source{[Schema="public", Item="customer_lifetime_value_view"]}[Data],
+        
+        // Get product performance
+        product_performance = Source{[Schema="public", Item="product_performance_view"]}[Data],
+        
+        // Get daily KPIs
+        daily_kpis = Source{[Schema="public", Item="daily_kpi_view"]}[Data],
+        
+        // Get geographic data
+        geographic_data = Source{[Schema="public", Item="geographic_performance_view"]}[Data],
+        
+        // Create a combined fact table
+        combined_fact = Table.Combine({sales_summary, product_performance}),
+        
+        // Add calculated columns
+        #"Added Custom" = Table.AddColumn(combined_fact, "Profit Margin", each [total_profit] / [total_revenue]),
+        // FIX: Escaping the literal M list braces for Python formatter:
+        #"Changed Type" = Table.TransformColumnTypes(#"Added Custom",{{ "Profit Margin", Percentage.Type }} )
+    in
+        #"Changed Type"
+    
