@@ -15,8 +15,8 @@ class DataLoader:
     def __init__(self):
         # Create SQLAlchemy engine
         self.db_url = f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@" \
-                     f"{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}?sslmode=require"
-        self.engine = create_engine(self.db_url, pool_size=10, max_overflow=20)
+                 f"{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
+        self.engine = create_engine(self.db_url, pool_size=10, max_overflow=20, connect_args={"sslmode": "disable"})
     
     def load_dataframe(self, df: pd.DataFrame, table_name: str, 
                       if_exists: str = 'append', chunk_size: int = 100) -> bool:

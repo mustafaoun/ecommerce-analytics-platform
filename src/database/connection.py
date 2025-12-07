@@ -20,7 +20,8 @@ class DatabaseConnection:
             'port': os.getenv('DB_PORT'),
             'database': os.getenv('DB_NAME'),
             'user': os.getenv('DB_USER'),
-            'password': os.getenv('DB_PASSWORD')
+            'password': os.getenv('DB_PASSWORD'),
+            'sslmode': 'disable'  # Disable SSL for local connections
         }
         # Create SQLAlchemy engine for use with pandas.read_sql_query when possible
         try:
@@ -29,7 +30,11 @@ class DatabaseConnection:
             host = self.conn_params.get('host') or 'localhost'
             port = self.conn_params.get('port') or '5432'
             dbname = self.conn_params.get('database') or ''
-            self._engine: Engine = create_engine(f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{dbname}")
+            # Disable SSL for local development
+            self._engine: Engine = create_engine(
+                f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{dbname}",
+                connect_args={"sslmode": "disable"}
+            )
         except Exception:
             self._engine = None
     
