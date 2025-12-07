@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: ecommerce-postgres-prod
+    environment:
+      POSTGRES_DB: ${DB_NAME:-ecommerce}
+      POSTGRES_USER: ${DB_USER:-ecommerce_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_INITDB_ARGS: "-c max_connections=100"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./src/database/schema_ddl.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-ecommerce_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecommerce-network
+    restart: always
+
+  metabase:
+    image: metabase/metabase:latest
+    container_name: ecommerce-metabase-prod
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: ${DB_NAME:-ecommerce}
+      MB_DB_PORT: 5432
+      MB_DB_USER: ${DB_USER:-ecommerce_user}
+      MB_DB_PASS: ${DB_PASSWORD}
+      MB_DB_HOST: postgres
+      MB_ADMIN_EMAIL: ${MB_ADMIN_EMAIL:-admin@ecommerce.com}
+      MB_ADMIN_PASSWORD: ${MB_ADMIN_PASSWORD}
+    ports:
+      - "80:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ecommerce-api-prod
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-ecommerce}
+      DB_USER: ${DB_USER:-ecommerce_user}
+      DB_PASSWORD: ${DB_PASSWORD}
+      FLASK_ENV: production
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+    restart: always
+    command: gunicorn -b 0.0.0.0:5000 -w 4 app:app
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  ecommerce-network:
+    driver: bridge

@@ -5,6 +5,11 @@ sqlalchemy>=2.0.0
 psycopg2-binary>=2.9.0
 python-dotenv>=1.0.0
 
+# Web Framework
+flask>=2.3.0
+flask-cors>=4.0.0
+gunicorn>=21.0.0
+
 # Data Generation
 faker>=18.0.0
 
@@ -22,6 +27,11 @@ plotly>=5.15.0
 apache-airflow>=2.6.0
 apache-airflow-providers-postgres>=5.0.0
 
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+
 # Utils
 python-dateutil>=2.8.0
 pytz>=2023.0
+requests>=2.31.0
