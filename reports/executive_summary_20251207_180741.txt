@@ -1,0 +1,24 @@
+
+        E-COMMERCE ANALYTICS REPORT
+        ============================
+        Period: 2025-11-07 to 2025-12-07
+        Generated: 2025-12-07 18:07:42
+        
+        KEY METRICS:
+        ------------
+        • Total Revenue: $4,554,195.10
+        • Total Orders: 1,342
+        • Average Order Value: $3,393.59
+        • Active Customers: 494
+        
+        TOP PERFORMING CATEGORIES:
+        --------------------------
+        • Electronics: $6,214,393.73 (856 orders)
+• Home & Garden: $2,743,707.79 (533 orders)
+• Fashion: $2,465,598.52 (613 orders)
+
+        TOP PRODUCTS:
+        -------------
+        • iPhone Headphones worry: $101,453.13 (53 units)
+• ThinkPad Tablets owner: $95,767.07 (49 units)
+• Lamp Kitchen interesting: $90,559.35 (63 units)

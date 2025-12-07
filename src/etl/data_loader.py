@@ -19,7 +19,7 @@ class DataLoader:
         self.engine = create_engine(self.db_url, pool_size=10, max_overflow=20)
     
     def load_dataframe(self, df: pd.DataFrame, table_name: str, 
-                      if_exists: str = 'append', chunk_size: int = 500) -> bool:
+                      if_exists: str = 'append', chunk_size: int = 100) -> bool:
         """
         Load a DataFrame to PostgreSQL table
         
@@ -40,12 +40,12 @@ class DataLoader:
             logger.info(f"Loading {len(df)} rows to {table_name}...")
             
             # Use to_sql with chunking for large datasets
+            # Don't use method='multi' with PostgreSQL - use default insertion
             df.to_sql(
                 table_name,
                 self.engine,
                 if_exists=if_exists,
                 index=False,
-                method='multi',
                 chunksize=chunk_size
             )
             

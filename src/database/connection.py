@@ -5,6 +5,8 @@ import os
 from contextlib import contextmanager
 from dotenv import load_dotenv
 import logging
+from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -20,6 +22,16 @@ class DatabaseConnection:
             'user': os.getenv('DB_USER'),
             'password': os.getenv('DB_PASSWORD')
         }
+        # Create SQLAlchemy engine for use with pandas.read_sql_query when possible
+        try:
+            user = self.conn_params.get('user') or ''
+            password = self.conn_params.get('password') or ''
+            host = self.conn_params.get('host') or 'localhost'
+            port = self.conn_params.get('port') or '5432'
+            dbname = self.conn_params.get('database') or ''
+            self._engine: Engine = create_engine(f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{dbname}")
+        except Exception:
+            self._engine = None
     
     @contextmanager
     def get_connection(self):
@@ -66,6 +78,10 @@ class DatabaseConnection:
         except Exception as e:
             logger.error(f"Query failed: {e}\nQuery: {query}")
             return False
+
+    def get_engine(self):
+        """Return SQLAlchemy engine if available (or None)."""
+        return self._engine
 
 # Singleton instance
 db = DatabaseConnection()
