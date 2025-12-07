@@ -1,0 +1,1 @@
+Server=your-server.pooler.supabase.com;Port=5432;Database=your-db;User Id=your_user;Password=YOUR_PASSWORD_HERE;

@@ -1,0 +1,75 @@
+"""
+Load sample data into PostgreSQL database.
+
+SETUP:
+1. Copy this file to load_sample_data.py
+2. Ensure .env has correct DB credentials
+3. Run: python load_sample_data.py
+"""
+import os
+from dotenv import load_dotenv
+from src.etl.data_generator import (
+    generate_users, generate_products, generate_orders, 
+    generate_order_items, generate_events, generate_marketing_campaigns
+)
+from src.database.connection import get_engine
+import pandas as pd
+from uuid import UUID
+
+load_dotenv()
+
+engine = get_engine()
+
+# Generate sample data with smaller dataset
+print("🔄 Generating sample data...")
+users_df = generate_users(n=100)  # 100 users
+products_df = generate_products(n=50)  # 50 products
+orders_df, _ = generate_orders(n=200, users_df=users_df)  # 200 orders
+order_items_df, orders_df = generate_order_items(orders_df, products_df, n=1000)
+events_df = generate_events(n=645, users_df=users_df)
+campaigns_df = generate_marketing_campaigns(n=10)
+
+# Fix UUID columns for PostgreSQL compatibility
+def fix_uuid_columns(df):
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            try:
+                df[col] = df[col].apply(lambda x: str(x) if isinstance(x, UUID) else x)
+            except:
+                pass
+    return df
+
+users_df = fix_uuid_columns(users_df)
+orders_df = fix_uuid_columns(orders_df)
+order_items_df = fix_uuid_columns(order_items_df)
+events_df = fix_uuid_columns(events_df)
+campaigns_df = fix_uuid_columns(campaigns_df)
+
+# Load to database
+print(f"📤 Loading data to PostgreSQL...")
+print(f"   Users: {len(users_df)} rows")
+print(f"   Products: {len(products_df)} rows")
+print(f"   Orders: {len(orders_df)} rows")
+print(f"   Order Items: {len(order_items_df)} rows")
+print(f"   Events: {len(events_df)} rows")
+print(f"   Campaigns: {len(campaigns_df)} rows")
+
+with engine.connect() as conn:
+    # Truncate existing data
+    conn.execute("TRUNCATE TABLE order_items CASCADE")
+    conn.execute("TRUNCATE TABLE orders CASCADE")
+    conn.execute("TRUNCATE TABLE events CASCADE")
+    conn.execute("TRUNCATE TABLE users CASCADE")
+    conn.execute("TRUNCATE TABLE products CASCADE")
+    conn.execute("TRUNCATE TABLE marketing_campaigns CASCADE")
+    conn.commit()
+
+# Load data
+users_df.to_sql('users', engine, if_exists='append', index=False)
+products_df.to_sql('products', engine, if_exists='append', index=False)
+orders_df.to_sql('orders', engine, if_exists='append', index=False)
+order_items_df.to_sql('order_items', engine, if_exists='append', index=False)
+events_df.to_sql('events', engine, if_exists='append', index=False)
+campaigns_df.to_sql('marketing_campaigns', engine, if_exists='append', index=False)
+
+print("\n✅ Sample data loaded successfully!")
