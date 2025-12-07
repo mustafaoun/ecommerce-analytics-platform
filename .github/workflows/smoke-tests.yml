@@ -1,0 +1,74 @@
+name: Smoke Tests
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  smoke-tests:
+    name: Run ETL smoke tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ecommerce_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres" --health-interval=10s --health-timeout=5s --health-retries=5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Wait for Postgres
+        run: |
+          python - << 'PY'
+import time, sys
+import psycopg2
+for i in range(60):
+    try:
+        psycopg2.connect(host='localhost', user='postgres', password='postgres', dbname='ecommerce_test')
+        print('Postgres is ready')
+        break
+    except Exception as e:
+        print('Waiting for Postgres...', i)
+        time.sleep(2)
+else:
+    print('Postgres not ready', file=sys.stderr)
+    sys.exit(1)
+PY
+
+      - name: Run schema creation
+        env:
+          DATABASE_URL: postgresql+psycopg2://postgres:postgres@localhost:5432/ecommerce_test
+        run: |
+          python scripts/create_schema.py
+
+      - name: Run ETL smoke tests
+        env:
+          DATABASE_URL: postgresql+psycopg2://postgres:postgres@localhost:5432/ecommerce_test
+        run: |
+          python scripts/test_etl_smoke.py
+
+      - name: Upload test reports (if any)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-logs
+          path: |
+            reports/**
+            scripts/**.log
