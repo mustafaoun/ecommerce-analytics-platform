@@ -13,11 +13,11 @@ load_dotenv()
 
 class DataLoader:
     def __init__(self):
-        # Create SQLAlchemy engine
-        self.db_url = f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@" \
-                 f"{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
-        self.engine = create_engine(self.db_url, pool_size=10, max_overflow=20, connect_args={"sslmode": "disable"})
-    
+        from src.database.connection import DatabaseConnection
+        self.engine = DatabaseConnection().get_engine()
+        if self.engine is None:
+            raise ValueError("Invalid database configuration")
+
     def load_dataframe(self, df: pd.DataFrame, table_name: str, 
                       if_exists: str = 'append', chunk_size: int = 100) -> bool:
         """
@@ -69,7 +69,7 @@ class DataLoader:
             total_rows = 0
             
             for chunk in pd.read_csv(csv_path, chunksize=chunk_size):
-                success = self.load_dataframe(chunk, table_name, if_exists='append')
+                success = self.load_dataframe(chunk, table_name, if_exists=if_exists)
                 if success:
                     total_rows += len(chunk)
                     logger.info(f"  Processed {total_rows} rows...")
@@ -146,15 +146,18 @@ class DataLoader:
         # Define load order (respect foreign key constraints)
         load_order = ['users', 'products', 'orders', 'order_items', 'events']
         
+        if truncate_first:
+            # Clear the related synthetic tables together so foreign keys remain valid.
+            tables = [name for name in load_order if name in data_dict]
+            if tables:
+                with self.engine.begin() as connection:
+                    connection.execute(text("TRUNCATE TABLE " + ", ".join(tables) + " RESTART IDENTITY"))
+
         all_success = True
         
         for table_name in load_order:
             if table_name in data_dict:
                 df = data_dict[table_name]
-                
-                # Truncate if requested
-                if truncate_first:
-                    self.truncate_table(table_name)
                 
                 # Load data
                 success = self.load_dataframe(df, table_name, if_exists='append')

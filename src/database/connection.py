@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from dotenv import load_dotenv
 import logging
 from sqlalchemy import create_engine
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import Engine, URL
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ class DatabaseConnection:
             'database': os.getenv('DB_NAME'),
             'user': os.getenv('DB_USER'),
             'password': os.getenv('DB_PASSWORD'),
-            'sslmode': 'disable'  # Disable SSL for local connections
+            'sslmode': os.getenv('DB_SSLMODE', 'prefer')
         }
         # Create SQLAlchemy engine for use with pandas.read_sql_query when possible
         try:
@@ -32,8 +32,8 @@ class DatabaseConnection:
             dbname = self.conn_params.get('database') or ''
             # Disable SSL for local development
             self._engine: Engine = create_engine(
-                f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{dbname}",
-                connect_args={"sslmode": "disable"}
+                URL.create("postgresql+psycopg2", username=user, password=password, host=host, port=int(port), database=dbname),
+                connect_args={"sslmode": self.conn_params["sslmode"]}
             )
         except Exception:
             self._engine = None

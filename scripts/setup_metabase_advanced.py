@@ -11,14 +11,14 @@ from typing import Dict, Any
 METABASE_URL = "http://localhost:3000"
 METABASE_API = f"{METABASE_URL}/api"
 ADMIN_EMAIL = "admin@ecommerce.com"
-ADMIN_PASSWORD = "EcommerceAdmin2025!"
+ADMIN_PASSWORD = os.environ["METABASE_ADMIN_PASSWORD"]
 
 # Database connection details
 DB_HOST = os.getenv("DB_HOST", "ecommerce-postgres")
 DB_PORT = int(os.getenv("DB_PORT", "5432"))
 DB_NAME = os.getenv("DB_NAME", "ecommerce")
 DB_USER = os.getenv("DB_USER", "ecommerce_user")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "ecommerce_password")
+DB_PASSWORD = os.environ["DB_PASSWORD"]
 
 session = requests.Session()
 

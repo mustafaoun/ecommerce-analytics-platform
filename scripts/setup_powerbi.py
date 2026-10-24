@@ -231,10 +231,10 @@ def generate_powerbi_connection():
     1. Open Power BI Desktop
     2. Click "Get Data" -> "More..." -> "Database" -> "PostgreSQL database"
     3. Enter connection details:
-        Server: aws-1-eu-west-1.pooler.supabase.com
+        Server: SET_DB_HOST_IN_ENV
         Database: postgres
-        Username: postgres.uquruuixtmkpgivbtcjx
-        Password: 5tF?36UXz$gFzb6
+        Username: SET_DB_USER_IN_ENV
+        Password: Read DB_PASSWORD from your local environment; do not save it in this guide.
     4. Click "Connect"
     
     STEP 2: LOAD DATA TABLES

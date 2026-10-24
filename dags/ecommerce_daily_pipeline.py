@@ -5,6 +5,7 @@ from airflow.operators.empty import EmptyOperator
 from airflow.utils.dates import days_ago
 import sys
 import os
+import subprocess
 
 # Add src to Python path
 sys.path.insert(0, '/opt/airflow/src')
@@ -33,19 +34,11 @@ dag = DAG(
 
 def run_etl():
     """Run the ETL pipeline"""
-    try:
-        os.chdir('/opt/airflow')
-        # Use absolute path for scripts
-        result = os.system('python /opt/airflow/scripts/run_etl.py')
-        if result == 0:
-            print("✅ ETL pipeline completed successfully")
-            return "ETL success"
-        else:
-            print("ETL pipeline failed with code: " + str(result))
-            return "ETL failed"
-    except Exception as e:
-        print(f"❌ ETL error: {e}")
-        return "ETL error"
+    subprocess.run(
+        [os.getenv("ETL_PYTHON", sys.executable), "/opt/airflow/scripts/run_etl.py"],
+        cwd="/opt/airflow", check=True,
+    )
+    return "ETL success"
 
 start_task = EmptyOperator(
     task_id='start_pipeline',

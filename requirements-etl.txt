@@ -1,0 +1,6 @@
+pandas>=2.0,<3
+numpy>=1.24,<3
+SQLAlchemy>=2.0,<3
+psycopg2-binary>=2.9,<3
+python-dotenv>=1,<2
+Faker>=18,<40

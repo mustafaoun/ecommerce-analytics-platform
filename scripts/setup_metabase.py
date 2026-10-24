@@ -31,7 +31,7 @@ class MetabaseSetup:
         print("❌ Metabase failed to start")
         return False
     
-    def setup_admin(self, email="admin@ecommerce.com", password="EcommerceAdmin2025!"):
+    def setup_admin(self, email="admin@ecommerce.com", password=os.environ["METABASE_ADMIN_PASSWORD"]):
         """Setup admin user (skip if already exists)"""
         print("👤 Setting up admin user...")
         
@@ -362,7 +362,7 @@ class MetabaseSetup:
         print("="*50)
         print(f"\n📊 Access Metabase: {self.base_url}")
         print("   Email: admin@ecommerce.com")
-        print("   Password: EcommerceAdmin2025!")
+        print("Password: configured through environment variables")
         print("\n📋 Next steps:")
         print("   1. Log in and explore the sample dashboard")
         print("   2. Create more questions and dashboards")

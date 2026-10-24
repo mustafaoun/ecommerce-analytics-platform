@@ -1,20 +1,27 @@
 x-airflow-common: &airflow-common
-  image: apache/airflow:2.6.3
+  build:
+    context: .
+    dockerfile: deploy/Dockerfile.airflow
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
-    AIRFLOW__WEBSERVER__SECRET_KEY: 'your-secret-key-here'
+    AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_WEBSERVER_SECRET_KEY:?Set an Airflow secret key}
     AIRFLOW__API__AUTH_BACKEND: 'airflow.api.auth.backend.basic_auth'
     AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL: 30
     # Add your ecommerce DB connection as environment variables
-    DB_HOST: aws-1-eu-west-1.pooler.supabase.com
-    DB_PORT: 5432
-    DB_NAME: postgres
-    DB_USER: postgres.uquruuixtmkpgivbtcjx
-    DB_PASSWORD: 5tF?36UXz$$gFzb6
+    DB_HOST: ${DB_HOST:-host.docker.internal}
+    ETL_PYTHON: /opt/etl-venv/bin/python
+    DB_SSLMODE: ${DB_SSLMODE:-prefer}
+    DB_PORT: ${DB_PORT:-5432}
+    DB_NAME: ${DB_NAME:-ecommerce}
+    DB_USER: ${DB_USER:-ecommerce_user}
+    DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
   volumes:
+    - ./scripts:/opt/airflow/scripts:ro
     - ./dags:/opt/airflow/dags
     - ./src:/opt/airflow/src
     - ./logs:/opt/airflow/logs
@@ -60,21 +67,13 @@ services:
 
   airflow-init:
     <<: *airflow-common
-    command: >
-      bash -c "
-        airflow db init &&
-        airflow users create \
-          --username admin \
-          --firstname Admin \
-          --lastname User \
-          --role Admin \
-          --email admin@example.com \
-          --password admin
-      "
+    command: version
     environment:
       <<: *airflow-common-env
       _AIRFLOW_DB_UPGRADE: 'true'
       _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: admin
+      _AIRFLOW_WWW_USER_PASSWORD: ${AIRFLOW_ADMIN_PASSWORD:?Set AIRFLOW_ADMIN_PASSWORD}
 
 volumes:
   postgres-db-volume:
