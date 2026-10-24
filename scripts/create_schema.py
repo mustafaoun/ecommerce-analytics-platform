@@ -24,7 +24,7 @@ def create_schema():
     commands = sql_commands.split(';')
     
     with db.get_connection() as conn:
-        conn.autocommit = True
+        conn.autocommit = False
         with conn.cursor() as cur:
             for command in commands:
                 command = command.strip()
@@ -33,9 +33,11 @@ def create_schema():
                         cur.execute(command)
                         logger.info(f"Executed: {command[:50]}...")
                     except Exception as e:
-                        logger.error(f"Error executing command: {e}\nCommand: {command[:100]}...")
+                        logger.error("Schema creation failed")
+                        raise
     
-    logger.info("✅ Schema created successfully!")
+        conn.commit()
+    logger.info("Schema created successfully")
 
 def test_schema():
     """Test that schema was created correctly"""
@@ -60,4 +62,4 @@ if __name__ == "__main__":
         test_schema()
         print("🎉 Database setup complete!")
     else:
-        print("❌ Cannot connect to database. Check your .env file and RDS settings.")
+        raise SystemExit("Cannot connect to database. Check your .env settings.")

@@ -1,3 +1,4 @@
+import os
 #!/usr/bin/env python3
 """
 UI automation to add saved questions to Metabase dashboards using Playwright.
@@ -18,7 +19,7 @@ from playwright.sync_api import sync_playwright
 METABASE_URL = "http://localhost:3000"
 API = f"{METABASE_URL}/api"
 ADMIN_EMAIL = "admin@ecommerce.com"
-ADMIN_PASSWORD = "EcommerceAdmin2025!"
+ADMIN_PASSWORD = os.environ["METABASE_ADMIN_PASSWORD"]
 
 # Dashboards and the saved question names to add
 DASHBOARD_MAP = {

@@ -223,9 +223,9 @@ class EcommercePlatformDeployer:
 
         print("\n🔗 ACCESS LINKS:")
         print("  • Apache Airflow: http://localhost:8080")
-        print("     Username: admin, Password: admin")
+        print("Password: configured through environment variables")
         print("  • Metabase: http://localhost:3000")
-        print("     Email: admin@ecommerce.com, Password: EcommerceAdmin2025!")
+        print("Password: configured through environment variables")
         print(f"  • Reports: file://{self.project_root}/reports/index.html")
 
         print("\n📋 NEXT STEPS:")

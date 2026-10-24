@@ -229,3 +229,7 @@ sync_metabase.py
 load_sample_data.py
 powerbi/connection_string.txt
 scripts/setup_metabase*.py
+
+# Embedded Git mirrors and local test environments
+*-backup.git/
+.test-venv/

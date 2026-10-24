@@ -1,6 +1,6 @@
 
     let
-        Source = PostgreSQL.Database("aws-1-eu-west-1.pooler.supabase.com", "postgres", [CreateNavigationProperties=false]),
+        Source = PostgreSQL.Database("SET_DB_HOST_IN_ENV", "postgres", [CreateNavigationProperties=false]),
         
         // Get sales summary
         sales_summary = Source{[Schema="public", Item="sales_summary"]}[Data],

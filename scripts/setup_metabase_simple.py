@@ -1,3 +1,4 @@
+import os
 #!/usr/bin/env python3
 """
 Setup Metabase dashboards with working queries - simplified version.
@@ -9,7 +10,7 @@ import time
 METABASE_URL = "http://localhost:3000"
 METABASE_API = f"{METABASE_URL}/api"
 ADMIN_EMAIL = "admin@ecommerce.com"
-ADMIN_PASSWORD = "EcommerceAdmin2025!"
+ADMIN_PASSWORD = os.environ["METABASE_ADMIN_PASSWORD"]
 
 session = requests.Session()
 
